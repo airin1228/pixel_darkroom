@@ -1,0 +1,894 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIXEL DARKROOM — Image Encryption by Pixel Manipulation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#05070a;
+    --bg-2:#020304;
+    --panel:#0d1216;
+    --panel-2:#141b20;
+    --line:#232d34;
+    --blue:#3aa0ff;
+    --blue-dim:#1f6fd1;
+    --green:#39ff6a;
+    --green-dim:#1fbf4a;
+    --red:#ff3d5a;
+    --red-dim:#d81f3d;
+    --orange:#ff8c1a;
+    --orange-dim:#d9700a;
+    --text:#eaf3ee;
+    --text-dim:#7d8f89;
+    --radius:10px;
+    --mono: 'JetBrains Mono', ui-monospace, monospace;
+    --mono-2: 'IBM Plex Mono', ui-monospace, monospace;
+    --sans: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse 700px 500px at 8% 0%, rgba(58,160,255,.14), transparent 55%),
+      radial-gradient(ellipse 700px 500px at 92% 8%, rgba(57,255,106,.10), transparent 55%),
+      radial-gradient(ellipse 800px 600px at 15% 100%, rgba(255,61,90,.10), transparent 55%),
+      radial-gradient(ellipse 800px 600px at 100% 100%, rgba(255,140,26,.10), transparent 55%),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:var(--sans);
+    -webkit-font-smoothing:antialiased;
+    min-height:100vh;
+    position:relative;
+  }
+  body::before{
+    content:'';position:fixed;inset:0;pointer-events:none;z-index:1000;
+    background:repeating-linear-gradient(to bottom, rgba(255,255,255,.012) 0px, rgba(255,255,255,.012) 1px, transparent 1px, transparent 3px);
+    mix-blend-mode:overlay;
+  }
+
+  /* ---------- header ---------- */
+  header{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-direction:column;
+    gap:14px;
+    padding:44px clamp(16px,4vw,40px) 36px;
+    border-bottom:1px solid var(--line);
+    position:relative;
+    overflow:hidden;
+    text-align:center;
+  }
+  #ambientCanvas{position:absolute;inset:0;width:100%;height:100%;opacity:.85;pointer-events:none;}
+  header::after{
+    content:'';position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(ellipse 520px 320px at 50% 40%, rgba(5,7,10,0) 0%, var(--bg) 92%);
+  }
+  .brand{display:flex;align-items:center;gap:18px;position:relative;z-index:1;
+    opacity:0; animation: fadeSlideUp .7s ease-out .05s forwards;}
+  .brand-mark{
+    width:56px;height:56px;border-radius:10px;
+    background:var(--bg-2);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0;
+    border:1px solid var(--line);
+    animation: markGlow 3.6s ease-in-out infinite;
+  }
+  .brand-mark svg{width:34px;height:38px;}
+  @keyframes markGlow{
+    0%,100%{ box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 0 18px rgba(58,160,255,.22), 0 0 18px rgba(57,255,106,.10); }
+    33%{ box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 0 26px rgba(57,255,106,.3), 0 0 20px rgba(255,140,26,.14); }
+    66%{ box-shadow:0 0 0 1px rgba(0,0,0,.4), 0 0 26px rgba(255,61,90,.28), 0 0 20px rgba(255,140,26,.18); }
+  }
+  @keyframes fadeSlideUp{
+    from{opacity:0; transform:translateY(10px);}
+    to{opacity:1; transform:translateY(0);}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .brand-mark{animation:none;}
+    .brand{animation:none; opacity:1;}
+  }
+  .brand-text{display:flex;flex-direction:column;align-items:center;line-height:1;}
+  h1.name{
+    font-family:var(--mono);font-weight:800;
+    font-size:clamp(34px, 6.2vw, 62px);
+    letter-spacing:.01em;
+    margin:0;
+    background:linear-gradient(90deg, var(--blue) 0%, var(--green) 34%, var(--orange) 68%, var(--red) 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    position:relative;
+    text-transform:uppercase;
+    filter:drop-shadow(0 0 18px rgba(58,160,255,.18)) drop-shadow(0 0 24px rgba(255,61,90,.12));
+  }
+  h1.name .glitch-layer{
+    position:absolute;left:0;top:0;width:100%;height:100%;
+    background:linear-gradient(90deg, var(--blue) 0%, var(--green) 34%, var(--orange) 68%, var(--red) 100%);
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    opacity:0;
+  }
+  @keyframes glitchA{
+    0%,92%,100%{opacity:0; transform:translate(0,0);}
+    93%{opacity:.7; transform:translate(-2px,1px); clip-path:inset(10% 0 60% 0);}
+    95%{opacity:.7; transform:translate(2px,-1px); clip-path:inset(60% 0 5% 0);}
+    97%{opacity:0;}
+  }
+  .name .layer-cyan{color:#00fff2;-webkit-text-fill-color:#00fff2;animation:glitchA 5.5s infinite;}
+  .name .layer-red{color:#ff1f4d;-webkit-text-fill-color:#ff1f4d;animation:glitchA 5.5s infinite reverse;}
+  .tagline{
+    font-family:var(--mono-2);font-size:clamp(11px,1.6vw,13px);
+    letter-spacing:.22em;text-transform:uppercase;color:var(--text-dim);
+    position:relative;z-index:1;
+    opacity:0; animation: fadeSlideUp .7s ease-out .18s forwards;
+  }
+  .tagline .accent{color:var(--green);}
+
+  @media (prefers-reduced-motion: reduce){
+    .name .layer-cyan, .name .layer-red{display:none;}
+    .tagline{animation:none; opacity:1;}
+  }
+
+  /* ---------- layout ---------- */
+  main{
+    display:grid;
+    grid-template-columns:300px 1fr;
+    gap:22px;
+    padding:22px clamp(16px,4vw,40px) 40px;
+    align-items:start;
+    max-width:1280px;
+    margin:0 auto;
+  }
+  @media (max-width:860px){
+    main{grid-template-columns:1fr;}
+  }
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+    opacity:0; animation: fadeSlideUp .6s ease-out .12s forwards;
+    transition: border-color .2s;
+  }
+  .stage-panel{animation-delay:.22s;}
+  @media (prefers-reduced-motion: reduce){
+    .panel{animation:none; opacity:1;}
+  }
+  .eyebrow{
+    font-family:var(--mono-2);font-size:10.5px;letter-spacing:.14em;color:var(--green);
+    text-transform:uppercase;margin:0 0 10px;display:flex;align-items:center;gap:8px;
+  }
+  .eyebrow::after{content:'';flex:1;height:1px;background:linear-gradient(90deg, var(--line), transparent);}
+
+  /* ---------- controls column ---------- */
+  .controls{display:flex;flex-direction:column;gap:16px;position:sticky;top:20px;}
+
+  .dropzone{
+    border:1.5px dashed var(--line);
+    border-radius:8px;
+    padding:22px 14px;
+    text-align:center;
+    cursor:pointer;
+    transition:border-color .15s, background .15s;
+    background:var(--bg-2);
+  }
+  .dropzone:hover, .dropzone.drag{
+    border-color:var(--blue);
+    background:rgba(58,160,255,.06);
+  }
+  .dropzone svg{width:26px;height:26px;color:var(--text-dim);margin-bottom:8px;}
+  .dropzone p{margin:0;font-size:13px;color:var(--text-dim);}
+  .dropzone p.main{color:var(--text);font-weight:500;margin-bottom:3px;}
+  #fileInput{display:none;}
+
+  .sample-btn{
+    width:100%;margin-top:10px;
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    font-family:var(--sans);font-size:12.5px;padding:8px;border-radius:7px;
+    cursor:pointer;transition:.15s;
+  }
+  .sample-btn:hover{border-color:var(--green);color:var(--green);}
+
+  .method-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;}
+  .method-btn{
+    font-family:var(--mono-2);font-size:11.5px;letter-spacing:.02em;
+    background:var(--panel-2);border:1px solid var(--line);color:var(--text-dim);
+    padding:9px 4px;border-radius:6px;cursor:pointer;transition:.12s;
+    text-transform:uppercase;
+  }
+  .method-btn:hover{color:var(--text);}
+  .method-btn[data-method="xor"].active{background:rgba(58,160,255,.14);border-color:var(--blue);color:var(--blue);box-shadow:0 0 12px rgba(58,160,255,.25);}
+  .method-btn[data-method="shuffle"].active{background:rgba(57,255,106,.14);border-color:var(--green);color:var(--green);box-shadow:0 0 12px rgba(57,255,106,.25);}
+  .method-btn[data-method="both"].active{background:linear-gradient(90deg, rgba(255,61,90,.16), rgba(255,140,26,.16));border-color:var(--orange);color:var(--orange);box-shadow:0 0 12px rgba(255,140,26,.25);}
+
+  .field{margin-top:4px;}
+  .field-head{
+    display:flex;justify-content:space-between;align-items:baseline;
+    font-size:12px;color:var(--text-dim);margin-bottom:6px;
+  }
+  .field-head span.val{
+    font-family:var(--mono-2);color:var(--text);background:var(--panel-2);
+    padding:1px 7px;border-radius:5px;font-size:12px;border:1px solid var(--line);
+  }
+  input[type="range"]{
+    -webkit-appearance:none;width:100%;height:4px;border-radius:2px;
+    background:var(--panel-2);outline:none;
+  }
+  input[type="range"]::-webkit-slider-thumb{
+    -webkit-appearance:none;width:15px;height:15px;border-radius:50%;
+    background:var(--accent, var(--blue));cursor:pointer;border:2px solid var(--bg-2);
+    box-shadow:0 0 8px var(--accent, var(--blue));
+  }
+  input[type="range"]::-moz-range-thumb{
+    width:13px;height:13px;border-radius:50%;background:var(--accent, var(--blue));
+    cursor:pointer;border:2px solid var(--bg-2);
+  }
+  .hidden{display:none !important;}
+
+  .actions{display:flex;flex-direction:column;gap:8px;margin-top:6px;}
+  button.primary{
+    font-family:var(--mono);font-weight:700;font-size:13.5px;letter-spacing:.02em;
+    padding:12px;border-radius:7px;border:none;cursor:pointer;
+    transition:transform .15s, filter .12s, box-shadow .2s;
+    text-transform:uppercase;
+  }
+  button.primary:active:not(:disabled){transform:translateY(1px);}
+  button.primary:disabled{opacity:.35;cursor:not-allowed;}
+  .btn-encrypt{
+    background:linear-gradient(155deg, var(--accent-a, var(--blue)), var(--accent-b, var(--blue-dim)));
+    color:#04080a;
+    box-shadow:0 0 22px var(--accent-glow, rgba(58,160,255,.25));
+  }
+  .btn-encrypt:hover:not(:disabled){filter:brightness(1.1); transform:translateY(-2px); box-shadow:0 6px 28px var(--accent-glow, rgba(58,160,255,.35));}
+  .btn-decrypt{
+    background:var(--panel-2);color:var(--green);border:1px solid rgba(57,255,106,.4) !important;
+  }
+  .btn-decrypt:hover:not(:disabled){background:rgba(57,255,106,.1);box-shadow:0 6px 24px rgba(57,255,106,.25); transform:translateY(-2px);}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .btn-ghost{
+    background:none;border:1px solid var(--line);color:var(--text-dim);
+    font-family:var(--sans);font-size:12.5px;padding:9px;border-radius:7px;cursor:pointer;
+  }
+  .btn-ghost:hover:not(:disabled){color:var(--text);border-color:var(--text-dim);}
+  .btn-ghost:disabled{opacity:.35;cursor:not-allowed;}
+
+  .note{
+    font-family:var(--mono-2);
+    font-size:11px;line-height:1.6;color:var(--text-dim);
+    border-top:1px solid var(--line);margin-top:4px;padding-top:12px;
+  }
+  .note .tag{color:var(--green);}
+
+  /* ---------- stage ---------- */
+  .stage-panel{padding:0;overflow:hidden;}
+  .stage-top{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:16px 20px 0;
+  }
+  .stage-status{
+    font-family:var(--mono-2);font-size:12px;color:var(--text-dim);
+    display:flex;align-items:center;gap:8px;
+  }
+  .stage-status .state-pill{
+    font-family:var(--mono-2);font-size:11px;letter-spacing:.04em;
+    padding:3px 9px;border-radius:20px;border:1px solid var(--line);color:var(--text-dim);
+  }
+  .state-pill.encrypted{color:var(--accent, var(--blue));border-color:var(--accent, var(--blue));background:rgba(255,255,255,.04);}
+  .state-pill.decrypted{color:var(--green);border-color:rgba(57,255,106,.4);background:rgba(57,255,106,.08);}
+  .state-pill.original{color:var(--text-dim);}
+  .match-badge{
+    font-family:var(--mono-2);font-size:11px;color:var(--green);display:flex;align-items:center;gap:5px;
+  }
+
+  .sprockets{
+    height:16px;
+    background-image:radial-gradient(circle 4px, var(--bg) 4px, transparent 4.5px);
+    background-size:22px 16px;
+    background-position:8px center;
+    background-repeat:repeat-x;
+    background-color:var(--bg-2);
+  }
+  .filmstrip{
+    background:var(--bg-2);
+    padding:0;
+  }
+  .stage-frame{
+    position:relative;
+    min-height:340px;
+    display:flex;align-items:center;justify-content:center;
+    background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.015) 0 2px, transparent 2px 4px),
+      var(--bg-2);
+    padding:26px;
+  }
+  .empty-state{
+    text-align:center;color:var(--text-dim);font-size:13px;
+  }
+  .empty-state svg{width:40px;height:40px;color:var(--line);margin-bottom:10px;}
+
+  .canvas-wrap{
+    position:relative;
+    max-width:100%;
+    line-height:0;
+    box-shadow:0 20px 50px rgba(0,0,0,.5);
+    border-radius:3px;
+    overflow:hidden;
+    cursor:ew-resize;
+  }
+  .canvas-wrap canvas{display:block;max-width:100%;height:auto;}
+  #origCanvas{
+    position:absolute;top:0;left:0;
+    clip-path: inset(0 0 0 var(--split, 50%));
+  }
+  .divider{
+    position:absolute;top:0;bottom:0;left:var(--split,50%);
+    width:2px;background:linear-gradient(var(--blue), var(--green), var(--orange), var(--red));
+    box-shadow:0 0 10px rgba(57,255,106,.5);
+    pointer-events:none;
+  }
+  .divider::before{
+    content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    width:26px;height:26px;border-radius:50%;background:var(--bg-2);border:2px solid var(--green);
+    box-shadow:0 2px 8px rgba(0,0,0,.5), 0 0 12px rgba(57,255,106,.4);
+  }
+  .divider::after{
+    content:'◂▸';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-size:9px;color:var(--green);letter-spacing:1px;
+  }
+  .side-label{
+    position:absolute;bottom:8px;font-family:var(--mono-2);font-size:9.5px;
+    letter-spacing:.08em;color:rgba(234,243,238,.7);
+    background:rgba(0,0,0,.45);padding:2px 6px;border-radius:4px;pointer-events:none;
+  }
+  .side-label.left{left:8px;}
+  .side-label.right{right:8px;}
+  .compare-hint{
+    text-align:center;font-size:11px;color:var(--text-dim);padding:9px 0 20px;
+    font-family:var(--mono-2);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <canvas id="ambientCanvas"></canvas>
+  <div class="brand">
+    <div class="brand-mark">
+      <svg viewBox="0 0 40 45" xmlns="http://www.w3.org/2000/svg">
+        <rect x="10" y="0" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="15" y="0" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="20" y="0" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="25" y="0" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="5"  y="5" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="30" y="5" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="5"  y="10" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="30" y="10" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="5"  y="15" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="30" y="15" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="0"  y="20" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="5"  y="20" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="10" y="20" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="15" y="20" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="20" y="20" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="25" y="20" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="30" y="20" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="35" y="20" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="0"  y="25" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="5"  y="25" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="10" y="25" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="15" y="25" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="20" y="25" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="25" y="25" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="30" y="25" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="35" y="25" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="0"  y="30" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="5"  y="30" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="10" y="30" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="30" y="30" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="35" y="30" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="0"  y="35" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="5"  y="35" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="10" y="35" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="15" y="35" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="20" y="35" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="25" y="35" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="30" y="35" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="35" y="35" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="0"  y="40" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="5"  y="40" width="4.4" height="4.4" rx="1" fill="#3aa0ff"/>
+        <rect x="10" y="40" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="15" y="40" width="4.4" height="4.4" rx="1" fill="#39ff6a"/>
+        <rect x="20" y="40" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="25" y="40" width="4.4" height="4.4" rx="1" fill="#ff8c1a"/>
+        <rect x="30" y="40" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+        <rect x="35" y="40" width="4.4" height="4.4" rx="1" fill="#ff3d5a"/>
+      </svg>
+    </div>
+    <div class="brand-text">
+      <h1 class="name" data-text="PIXEL DARKROOM">
+        PIXEL DARKROOM
+        <span class="glitch-layer layer-cyan" aria-hidden="true">PIXEL DARKROOM</span>
+        <span class="glitch-layer layer-red" aria-hidden="true">PIXEL DARKROOM</span>
+      </h1>
+    </div>
+  </div>
+  <div class="tagline">Image Encryption <span class="accent">//</span> by Pixel Manipulation</div>
+</header>
+
+<main>
+  <!-- CONTROLS -->
+  <div class="panel controls">
+    <div>
+      <p class="eyebrow">Load</p>
+      <div class="dropzone" id="dropzone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4m0 0L7 9m5-5l5 5"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3"/></svg>
+        <p class="main">Drop an image here</p>
+        <p>or click to browse</p>
+      </div>
+      <input type="file" id="fileInput" accept="image/*">
+      <button class="sample-btn" id="sampleBtn">Use a sample image instead</button>
+    </div>
+
+    <div>
+      <p class="eyebrow">Method</p>
+      <div class="method-row">
+        <button class="method-btn active" data-method="xor">XOR</button>
+        <button class="method-btn" data-method="shuffle">Shuffle</button>
+        <button class="method-btn" data-method="both">Both</button>
+      </div>
+    </div>
+
+    <div>
+      <p class="eyebrow">Controls</p>
+      <div class="field" id="keyField">
+        <div class="field-head"><label for="keyRange">XOR key</label><span class="val" id="keyVal">173</span></div>
+        <input type="range" id="keyRange" min="1" max="255" value="173">
+      </div>
+      <div class="field hidden" id="seedField">
+        <div class="field-head"><label for="seedRange">Shuffle seed</label><span class="val" id="seedVal">42</span></div>
+        <input type="range" id="seedRange" min="1" max="9999" value="42">
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="primary btn-encrypt" id="encryptBtn" disabled>Encrypt image</button>
+      <button class="primary btn-decrypt" id="decryptBtn" disabled>Decrypt image</button>
+      <div class="row2">
+        <button class="btn-ghost" id="resetBtn" disabled>Reset</button>
+        <button class="btn-ghost" id="downloadBtn" disabled>Download</button>
+      </div>
+    </div>
+
+    <p class="note"><span class="tag">[SYSTEM]</span> XOR and pixel-shuffle are simple, fully reversible operations — built to teach how pixel manipulation works, not to guard real secrets. Treat it as a lab, not a vault.</p>
+  </div>
+
+  <!-- STAGE -->
+  <div class="panel stage-panel">
+    <div class="stage-top">
+      <div class="stage-status">
+        <span>Stage</span>
+        <span class="state-pill original" id="statePill">no image loaded</span>
+      </div>
+      <div class="match-badge hidden" id="matchBadge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 13l4 4L19 7"/></svg>
+        pixel-perfect match
+      </div>
+    </div>
+
+    <div class="filmstrip">
+      <div class="sprockets"></div>
+      <div class="stage-frame" id="stageFrame">
+        <div class="empty-state" id="emptyState">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="M21 15l-5-5L5 21"/></svg>
+          <div>Load an image to start developing</div>
+        </div>
+        <div class="canvas-wrap hidden" id="canvasWrap">
+          <canvas id="workCanvas"></canvas>
+          <canvas id="origCanvas"></canvas>
+          <div class="divider" id="divider"></div>
+          <span class="side-label left">current</span>
+          <span class="side-label right">original</span>
+        </div>
+      </div>
+      <div class="sprockets"></div>
+    </div>
+    <p class="compare-hint" id="compareHint">drag the divider to compare current vs. original</p>
+  </div>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------------- ambient floating pixel-ember animation ----------------
+  const ambientCanvas = document.getElementById('ambientCanvas');
+  const actx = ambientCanvas.getContext('2d');
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const emberColors = ['#3aa0ff','#39ff6a','#ff8c1a','#ff3d5a'];
+  let embers = [];
+
+  function sizeAmbient(){
+    ambientCanvas.width = ambientCanvas.offsetWidth;
+    ambientCanvas.height = ambientCanvas.offsetHeight;
+    const count = Math.max(18, Math.round((ambientCanvas.width * ambientCanvas.height) / 26000));
+    embers = new Array(count).fill(0).map(makeEmber);
+  }
+  function makeEmber(){
+    const size = 2 + Math.random()*4;
+    return {
+      x: Math.random()*ambientCanvas.width,
+      y: Math.random()*ambientCanvas.height,
+      size,
+      color: emberColors[Math.floor(Math.random()*emberColors.length)],
+      speed: 0.12 + Math.random()*0.28,
+      drift: (Math.random()-0.5)*0.18,
+      phase: Math.random()*Math.PI*2,
+      pulseSpeed: 0.012 + Math.random()*0.018
+    };
+  }
+  function drawEmbers(){
+    actx.clearRect(0,0,ambientCanvas.width, ambientCanvas.height);
+    for(const e of embers){
+      e.phase += e.pulseSpeed;
+      const alpha = 0.25 + Math.abs(Math.sin(e.phase))*0.55;
+      actx.save();
+      actx.globalAlpha = alpha;
+      actx.shadowBlur = 10;
+      actx.shadowColor = e.color;
+      actx.fillStyle = e.color;
+      actx.fillRect(e.x, e.y, e.size, e.size);
+      actx.restore();
+      if(!reduced){
+        e.y -= e.speed;
+        e.x += e.drift;
+        if(e.y < -10){ e.y = ambientCanvas.height + 10; e.x = Math.random()*ambientCanvas.width; }
+        if(e.x < -10) e.x = ambientCanvas.width + 10;
+        if(e.x > ambientCanvas.width+10) e.x = -10;
+      }
+    }
+  }
+  sizeAmbient();
+  if(reduced){
+    drawEmbers();
+  } else {
+    (function loop(){ drawEmbers(); requestAnimationFrame(loop); })();
+  }
+  window.addEventListener('resize', sizeAmbient);
+
+  // ---------------- seeded RNG (mulberry32) ----------------
+  function mulberry32(seed){
+    let a = seed >>> 0;
+    return function(){
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function permutation(n, seed){
+    const rng = mulberry32(seed);
+    const idx = new Uint32Array(n);
+    for(let i=0;i<n;i++) idx[i]=i;
+    for(let i=n-1;i>0;i--){
+      const j = Math.floor(rng()*(i+1));
+      const tmp = idx[i]; idx[i]=idx[j]; idx[j]=tmp;
+    }
+    return idx;
+  }
+
+  // ---------------- pixel operations ----------------
+  function xorTransform(imageData, key){
+    const src = imageData.data;
+    const out = new Uint8ClampedArray(src.length);
+    for(let i=0;i<src.length;i+=4){
+      out[i]   = src[i]   ^ key;
+      out[i+1] = src[i+1] ^ key;
+      out[i+2] = src[i+2] ^ key;
+      out[i+3] = 255;
+    }
+    return new ImageData(out, imageData.width, imageData.height);
+  }
+  function shuffleEncrypt(imageData, seed){
+    const w = imageData.width, h = imageData.height, n = w*h;
+    const src = imageData.data;
+    const perm = permutation(n, seed);
+    const out = new Uint8ClampedArray(src.length);
+    for(let i=0;i<n;i++){
+      const from = perm[i]*4, to = i*4;
+      out[to]=src[from]; out[to+1]=src[from+1]; out[to+2]=src[from+2]; out[to+3]=255;
+    }
+    return new ImageData(out, w, h);
+  }
+  function shuffleDecrypt(imageData, seed){
+    const w = imageData.width, h = imageData.height, n = w*h;
+    const src = imageData.data;
+    const perm = permutation(n, seed);
+    const out = new Uint8ClampedArray(src.length);
+    for(let i=0;i<n;i++){
+      const from = i*4, to = perm[i]*4;
+      out[to]=src[from]; out[to+1]=src[from+1]; out[to+2]=src[from+2]; out[to+3]=255;
+    }
+    return new ImageData(out, w, h);
+  }
+
+  // ---------------- accent theming per method ----------------
+  const ACCENTS = {
+    xor:     { a:'#3aa0ff', b:'#1f6fd1', glow:'rgba(58,160,255,.3)',  pill:'#3aa0ff' },
+    shuffle: { a:'#39ff6a', b:'#1fbf4a', glow:'rgba(57,255,106,.3)',  pill:'#39ff6a' },
+    both:    { a:'#ff3d5a', b:'#ff8c1a', glow:'rgba(255,140,26,.3)', pill:'#ff8c1a' }
+  };
+  function applyAccent(method){
+    const acc = ACCENTS[method];
+    document.documentElement.style.setProperty('--accent', acc.pill);
+    document.documentElement.style.setProperty('--accent-a', acc.a);
+    document.documentElement.style.setProperty('--accent-b', acc.b);
+    document.documentElement.style.setProperty('--accent-glow', acc.glow);
+  }
+
+  // ---------------- state ----------------
+  const MAX_DIM = 640;
+  let originalData = null;
+  let currentData = null;
+  let currentMethod = 'xor';
+  let currentStateLabel = 'original';
+
+  const workCanvas = document.getElementById('workCanvas');
+  const origCanvas = document.getElementById('origCanvas');
+  const wctx = workCanvas.getContext('2d');
+  const octx = origCanvas.getContext('2d');
+  const canvasWrap = document.getElementById('canvasWrap');
+  const emptyState = document.getElementById('emptyState');
+  const stagePill = document.getElementById('statePill');
+  const matchBadge = document.getElementById('matchBadge');
+  const compareHint = document.getElementById('compareHint');
+
+  const encryptBtn = document.getElementById('encryptBtn');
+  const decryptBtn = document.getElementById('decryptBtn');
+  const resetBtn = document.getElementById('resetBtn');
+  const downloadBtn = document.getElementById('downloadBtn');
+
+  function setButtonsEnabled(hasImage){
+    encryptBtn.disabled = !hasImage;
+    decryptBtn.disabled = !hasImage;
+    resetBtn.disabled = !hasImage;
+    downloadBtn.disabled = !hasImage;
+  }
+
+  function renderCurrent(){
+    if(!currentData) return;
+    workCanvas.width = currentData.width;
+    workCanvas.height = currentData.height;
+    wctx.putImageData(currentData, 0, 0);
+
+    origCanvas.width = originalData.width;
+    origCanvas.height = originalData.height;
+    octx.putImageData(originalData, 0, 0);
+
+    emptyState.classList.add('hidden');
+    canvasWrap.classList.remove('hidden');
+    compareHint.classList.remove('hidden');
+  }
+
+  function updateStatusPill(){
+    stagePill.classList.remove('original','encrypted','decrypted');
+    if(currentStateLabel === 'original'){
+      stagePill.textContent = 'original';
+      stagePill.classList.add('original');
+      matchBadge.classList.add('hidden');
+    } else if(currentStateLabel === 'encrypted'){
+      const detail = currentMethod === 'xor' ? `xor key ${keyRange.value}`
+        : currentMethod === 'shuffle' ? `shuffle seed ${seedRange.value}`
+        : `both · key ${keyRange.value} · seed ${seedRange.value}`;
+      stagePill.textContent = `encrypted — ${detail}`;
+      stagePill.classList.add('encrypted');
+      matchBadge.classList.add('hidden');
+    } else if(currentStateLabel === 'decrypted'){
+      stagePill.textContent = 'decrypted';
+      stagePill.classList.add('decrypted');
+      const matches = dataEquals(currentData, originalData);
+      matchBadge.classList.toggle('hidden', !matches);
+    }
+  }
+
+  function dataEquals(a, b){
+    if(!a || !b || a.width!==b.width || a.height!==b.height) return false;
+    const da=a.data, db=b.data;
+    for(let i=0;i<da.length;i+=4){
+      if(da[i]!==db[i] || da[i+1]!==db[i+1] || da[i+2]!==db[i+2]) return false;
+    }
+    return true;
+  }
+
+  function loadFromImageElement(img){
+    let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+    const scale = Math.min(1, MAX_DIM / Math.max(w,h));
+    w = Math.max(1, Math.round(w*scale));
+    h = Math.max(1, Math.round(h*scale));
+
+    const tmp = document.createElement('canvas');
+    tmp.width = w; tmp.height = h;
+    const tctx = tmp.getContext('2d');
+    tctx.fillStyle = '#ffffff';
+    tctx.fillRect(0,0,w,h);
+    tctx.drawImage(img, 0, 0, w, h);
+
+    originalData = tctx.getImageData(0,0,w,h);
+    currentData = new ImageData(new Uint8ClampedArray(originalData.data), w, h);
+    currentStateLabel = 'original';
+    renderCurrent();
+    updateStatusPill();
+    setButtonsEnabled(true);
+    setSplit(50);
+  }
+
+  function loadFromFile(file){
+    if(!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => loadFromImageElement(img);
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function generateSample(){
+    const w=420,h=300;
+    const c = document.createElement('canvas');
+    c.width=w; c.height=h;
+    const ctx = c.getContext('2d');
+    const grad = ctx.createLinearGradient(0,0,w,h);
+    grad.addColorStop(0,'#3aa0ff');
+    grad.addColorStop(0.34,'#39ff6a');
+    grad.addColorStop(0.68,'#ff8c1a');
+    grad.addColorStop(1,'#ff3d5a');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,w,h);
+    for(let i=0;i<7;i++){
+      ctx.beginPath();
+      ctx.fillStyle = `hsl(${(i*47)%360} 80% 55% / 0.5)`;
+      ctx.arc(40+i*55, 60+ (i%3)*70, 34, 0, Math.PI*2);
+      ctx.fill();
+    }
+    ctx.fillStyle = 'rgba(2,3,4,0.85)';
+    ctx.fillRect(0,h-64,w,64);
+    ctx.fillStyle = '#eaf3ee';
+    ctx.font = '800 24px "JetBrains Mono", monospace';
+    ctx.fillText('PIXEL DARKROOM', 16, h-24);
+    const img = new Image();
+    img.onload = () => loadFromImageElement(img);
+    img.src = c.toDataURL();
+  }
+
+  // ---------------- encrypt / decrypt ----------------
+  function doEncrypt(){
+    if(!currentData) return;
+    const key = parseInt(keyRange.value,10);
+    const seed = parseInt(seedRange.value,10);
+    let result;
+    if(currentMethod === 'xor'){
+      result = xorTransform(currentData, key);
+    } else if(currentMethod === 'shuffle'){
+      result = shuffleEncrypt(currentData, seed);
+    } else {
+      result = shuffleEncrypt(currentData, seed);
+      result = xorTransform(result, key);
+    }
+    currentData = result;
+    currentStateLabel = 'encrypted';
+    renderCurrent();
+    updateStatusPill();
+  }
+
+  function doDecrypt(){
+    if(!currentData) return;
+    const key = parseInt(keyRange.value,10);
+    const seed = parseInt(seedRange.value,10);
+    let result;
+    if(currentMethod === 'xor'){
+      result = xorTransform(currentData, key);
+    } else if(currentMethod === 'shuffle'){
+      result = shuffleDecrypt(currentData, seed);
+    } else {
+      result = xorTransform(currentData, key);
+      result = shuffleDecrypt(result, seed);
+    }
+    currentData = result;
+    currentStateLabel = 'decrypted';
+    renderCurrent();
+    updateStatusPill();
+  }
+
+  function doReset(){
+    if(!originalData) return;
+    currentData = new ImageData(new Uint8ClampedArray(originalData.data), originalData.width, originalData.height);
+    currentStateLabel = 'original';
+    renderCurrent();
+    updateStatusPill();
+  }
+
+  function doDownload(){
+    if(!currentData) return;
+    workCanvas.toBlob(blob=>{
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `pixel-darkroom-${currentStateLabel}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }, 'image/png');
+  }
+
+  // ---------------- UI wiring ----------------
+  const dropzone = document.getElementById('dropzone');
+  const fileInput = document.getElementById('fileInput');
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', e => loadFromFile(e.target.files[0]));
+  ['dragenter','dragover'].forEach(evt=>{
+    dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.add('drag'); });
+  });
+  ['dragleave','drop'].forEach(evt=>{
+    dropzone.addEventListener(evt, e=>{ e.preventDefault(); dropzone.classList.remove('drag'); });
+  });
+  dropzone.addEventListener('drop', e=>{
+    const file = e.dataTransfer.files[0];
+    loadFromFile(file);
+  });
+
+  document.getElementById('sampleBtn').addEventListener('click', generateSample);
+
+  const methodBtns = document.querySelectorAll('.method-btn');
+  const keyField = document.getElementById('keyField');
+  const seedField = document.getElementById('seedField');
+  methodBtns.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      methodBtns.forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      currentMethod = btn.dataset.method;
+      applyAccent(currentMethod);
+      keyField.classList.toggle('hidden', currentMethod === 'shuffle');
+      seedField.classList.toggle('hidden', currentMethod === 'xor');
+      if(currentData) updateStatusPill();
+    });
+  });
+  applyAccent('xor');
+
+  const keyRange = document.getElementById('keyRange');
+  const keyVal = document.getElementById('keyVal');
+  keyRange.addEventListener('input', ()=>{ keyVal.textContent = keyRange.value; if(currentData) updateStatusPill(); });
+
+  const seedRange = document.getElementById('seedRange');
+  const seedVal = document.getElementById('seedVal');
+  seedRange.addEventListener('input', ()=>{ seedVal.textContent = seedRange.value; if(currentData) updateStatusPill(); });
+
+  encryptBtn.addEventListener('click', doEncrypt);
+  decryptBtn.addEventListener('click', doDecrypt);
+  resetBtn.addEventListener('click', doReset);
+  downloadBtn.addEventListener('click', doDownload);
+
+  // ---------------- compare divider ----------------
+  const divider = document.getElementById('divider');
+  function setSplit(pct){
+    pct = Math.max(0, Math.min(100, pct));
+    canvasWrap.style.setProperty('--split', pct + '%');
+  }
+  let dragging = false;
+  canvasWrap.addEventListener('pointerdown', e=>{ dragging = true; updateFromEvent(e); });
+  window.addEventListener('pointermove', e=>{ if(dragging) updateFromEvent(e); });
+  window.addEventListener('pointerup', ()=> dragging=false);
+  function updateFromEvent(e){
+    const rect = canvasWrap.getBoundingClientRect();
+    const pct = ((e.clientX - rect.left) / rect.width) * 100;
+    setSplit(pct);
+  }
+
+  setButtonsEnabled(false);
+})();
+</script>
+</body>
+</html>
